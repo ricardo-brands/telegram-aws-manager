@@ -65,7 +65,7 @@ To import and run this flow in your n8n instance, you will need:
 
 1. Import the `workflow.json` file into your n8n.
 2. Add your credentials in all corresponding nodes (Telegram, AWS, SSH, Google Gemini).
-3. In the **Verify Users** node, replace the value `862975787` with your Telegram Chat ID (and add your team's IDs).
+3. In the **Verify Users** node, replace the value `YOUR_CHAT_ID_HERE` with your Telegram Chat ID (and add your team's IDs).
 4. In the **Logic Brain** node, change the `instance_id` variable to your EC2 machine ID and set your `regiao` (e.g., `sa-east-1`).
 5. In the **AI - Understands Request** node, edit the Prompt to include the actual paths of your Docker containers, services, or scripts that the AI is allowed to run.
 
