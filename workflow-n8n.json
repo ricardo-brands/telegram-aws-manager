@@ -1,0 +1,904 @@
+{
+  "name": "Super Bot AWS + SSH IA",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger-node",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        5232
+      ],
+      "webhookId": "COLOQUE-SEU-WEBHOOK-ID-AQUI",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.message.chat.id.toString() }}",
+              "rightValue": "YOUR_CHAT_ID_HERE",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "verifica-usuarios-node",
+      "name": "Check Users",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        5232
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const CONFIG = {\n  instance_id: 'i-XXXXXXXXXXXXXXXXX',\n  regiao: 'us-east-1'\n};\n\nconst specs = {\n  't2.micro': '1 vCPU, 1 GB RAM',\n  't2.small': '1 vCPU, 2 GB RAM',\n  't2.medium': '2 vCPU, 4 GB RAM',\n  't2.large': '2 vCPU, 8 GB RAM',\n  't3.medium': '2 vCPU, 4 GB RAM',\n  't3.large': '2 vCPU, 8 GB RAM'\n};\n\nconst texto = $input.item.json.message.text.trim().toLowerCase();\nconst comando = texto.split(' ')[0];\nconst parametro = texto.split(' ')[1] || '';\n\nlet resposta_direta = null;\nlet acao_bot = null;\n\n// 🔀 COMANDOS RESTRITOS AWS\nif (comando === '/status') acao_bot = 'status';\nelse if (comando === '/ligar') acao_bot = 'ligar';\nelse if (comando === '/desligar') acao_bot = 'desligar';\nelse if (comando === '/reiniciar') acao_bot = 'reiniciar';\nelse if (comando === '/listar') {\n  resposta_direta = \"📋 *Catálogo AWS:*\\n\\n\";\n  for (const [tipo, spec] of Object.entries(specs)) resposta_direta += `• \\`${tipo}\\` - ${spec}\\n`;\n  acao_bot = 'texto_direto';\n}\nelse if (comando === '/mudar') {\n  if (!specs[parametro]) {\n    resposta_direta = `❌ Tipo '${parametro}' não reconhecido.\\nUse /listar para ver as opções.`;\n    acao_bot = 'texto_direto';\n  } else acao_bot = 'mudar';\n}\n// ℹ️ MENU DE AJUDA\nelse if (comando === '/ajuda' || comando === '/help' || comando === '/start') {\n  resposta_direta = \"☁️ *Controle da AWS:*\\n/status - Ver estado atual\\n/ligar - Iniciar servidor\\n/desligar - Parar servidor\\n/reiniciar - Reiniciar servidor\\n/listar - Ver tamanhos\\n/mudar <tipo> - Alterar capacidade\\n\\n🧠 *Gestão do Servidor (IA):*\\nPode pedir em linguagem natural! Ex:\\n• _'como tá a memória?'_\\n• _'reinicia o apache'_\\n• _'mostra os processos pesados'_\\n• _'quais sites estão ativos?'_\";\n  acao_bot = 'texto_direto';\n}\n// 🤖 LINGUAGEM NATURAL -> VAI PARA O SSH/GEMINI\nelse {\n  acao_bot = 'ssh';\n}\n\nreturn { \n  json: {\n    ...$input.item.json, // Preserva o JSON original para a IA ler a mensagem\n    comando_valido: true,\n    acao: acao_bot,\n    resposta_direta: resposta_direta,\n    parametro: parametro,\n    instance_id: CONFIG.instance_id,\n    regiao: CONFIG.regiao\n  } \n};"
+      },
+      "id": "cerebro-logico-node",
+      "name": "Logic Brain",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        5232
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1",
+                    "leftValue": "={{ $json.acao }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "2",
+                    "leftValue": "={{ $json.acao }}",
+                    "rightValue": "ligar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3",
+                    "leftValue": "={{ $json.acao }}",
+                    "rightValue": "desligar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4",
+                    "leftValue": "={{ $json.acao }}",
+                    "rightValue": "reiniciar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5",
+                    "leftValue": "={{ $json.acao }}",
+                    "rightValue": "mudar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6",
+                    "leftValue": "={{ $json.acao }}",
+                    "rightValue": "texto_direto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7",
+                    "leftValue": "={{ $json.acao }}",
+                    "rightValue": "ssh",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "roteador-mestre-node",
+      "name": "Roteador Mestre",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2736,
+        5232
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://ec2.{{$json.regiao}}.amazonaws.com",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Action",
+              "value": "DescribeInstances"
+            },
+            {
+              "name": "Version",
+              "value": "2016-11-15"
+            },
+            {
+              "name": "InstanceId.1",
+              "value": "={{ $json.instance_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aws-status-node",
+      "name": "AWS: Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3024,
+        4720
+      ],
+      "credentials": {
+        "aws": {
+          "id": "",
+          "name": "AWS (IAM) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://ec2.{{$json.regiao}}.amazonaws.com",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Action",
+              "value": "StartInstances"
+            },
+            {
+              "name": "Version",
+              "value": "2016-11-15"
+            },
+            {
+              "name": "InstanceId.1",
+              "value": "={{ $json.instance_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aws-ligar-node",
+      "name": "AWS: Ligar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3024,
+        4880
+      ],
+      "credentials": {
+        "aws": {
+          "id": "",
+          "name": "AWS (IAM) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://ec2.{{$json.regiao}}.amazonaws.com",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Action",
+              "value": "StopInstances"
+            },
+            {
+              "name": "Version",
+              "value": "2016-11-15"
+            },
+            {
+              "name": "InstanceId.1",
+              "value": "={{ $json.instance_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aws-desligar-node",
+      "name": "AWS: Desligar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3024,
+        5024
+      ],
+      "credentials": {
+        "aws": {
+          "id": "",
+          "name": "AWS (IAM) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://ec2.{{$json.regiao}}.amazonaws.com",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Action",
+              "value": "RebootInstances"
+            },
+            {
+              "name": "Version",
+              "value": "2016-11-15"
+            },
+            {
+              "name": "InstanceId.1",
+              "value": "={{ $json.instance_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aws-reiniciar-node",
+      "name": "AWS: Reiniciar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3024,
+        5184
+      ],
+      "credentials": {
+        "aws": {
+          "id": "",
+          "name": "AWS (IAM) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://ec2.{{$json.regiao}}.amazonaws.com",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "aws",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Action",
+              "value": "ModifyInstanceAttribute"
+            },
+            {
+              "name": "Version",
+              "value": "2016-11-15"
+            },
+            {
+              "name": "InstanceId",
+              "value": "={{ $json.instance_id }}"
+            },
+            {
+              "name": "InstanceType.Value",
+              "value": "={{ $json.parametro }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aws-mudar-tipo-node",
+      "name": "AWS API: Mudar Tipo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3024,
+        5328
+      ],
+      "credentials": {
+        "aws": {
+          "id": "",
+          "name": "AWS (IAM) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.resposta_direta }}",
+        "additionalFields": {}
+      },
+      "id": "resp-texto-direto-node",
+      "name": "Resp: Texto Direto",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        3024,
+        5472
+      ],
+      "webhookId": "COLOQUE-SEU-WEBHOOK-ID-AQUI",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=📊 *Status da Instância*\n\nEstado atual: `{{ $json.data.match(/<name>(.*?)<\\/name>/)[1] }}`\nTipo (Hardware): `{{ $json.data.match(/<instanceType>(.*?)<\\/instanceType>/)[1] }}`\nIP Público: `{{ $json.data.match(/<ipAddress>(.*?)<\\/ipAddress>/)[1] || 'Sem IP (Desligada)' }}`",
+        "additionalFields": {}
+      },
+      "id": "resp-status-node",
+      "name": "Resp: Status",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        3328,
+        4720
+      ],
+      "webhookId": "COLOQUE-SEU-WEBHOOK-ID-AQUI",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=✅ Comando processado na AWS!\n\nA máquina está recebendo o comando agora. Aguarde cerca de 1 a 2 minutos e verifique com /status.",
+        "additionalFields": {}
+      },
+      "id": "resp-acao-executada-node",
+      "name": "Resp: Ação Executada",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        3328,
+        5024
+      ],
+      "webhookId": "COLOQUE-SEU-WEBHOOK-ID-AQUI",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Você é um roteador de infraestrutura AWS.\nO usuário disse: \"{{ $json.message.text }}\"\n\nSua tarefa é interpretar o que o usuário quer fazer e mapear essa intenção para UM destes comandos Linux exatos permitidos:\n\n📊 MONITORAMENTO:\n- Checar disco: \"df -h\"\n- Checar memória: \"free -m\"\n- Checar uptime ou carga: \"uptime\"\n- Checar processos \"htop\"\n\n🌎 SITES E DOMÍNIOS:\n- Checar sites que estão ativos no Apache: \"ls -1 /etc/apache2/sites-enabled/\"\n- Ver detalhes e domínios do Apache: \"apache2ctl -S\"\n\n🔄 SERVIÇOS E CONTAINERS:\n- Reiniciar Apache (Web): \"sudo systemctl restart apache2\"\n- Reiniciar MySQL (Banco de Dados): \"sudo systemctl restart mysql\"\n- Checar status do Apache: \"sudo systemctl status apache2 --no-pager\"\n- Checar status do MySQL: \"sudo systemctl status mysql --no-pager\"\n\n⚠️ SISTEMA (CRÍTICO):\n- Reiniciar o servidor inteiro: \"sudo reboot\"\n\nRegras de Segurança MÁXIMA:\n1. Responda APENAS com o comando Linux em formato de texto puro. Nada mais.\n2. Se a mensagem não se encaixar em NENHUM dos cenários acima ou pedir para rodar comando destrutivo, responda EXATAMENTE: ERRO, NÃO TENHO PERMISSÃO PARA EXECUTAR ESTE COMANDO"
+      },
+      "id": "ia-entende-pedido-node",
+      "name": "IA - Entende o Pedido",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        3024,
+        5680
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "id": "google-gemini-1-node",
+      "name": "Google Gemini 1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3024,
+        5872
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.text }}",
+              "rightValue": "ERRO",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "comando-permitido-node",
+      "name": "Comando Permitido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3328,
+        5680
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "privateKey",
+        "command": "={{ $json.text }}"
+      },
+      "id": "ssh-executa-node",
+      "name": "SSH - Executa",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        3584,
+        5584
+      ],
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "",
+          "name": "SSH Private Key account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Desculpe, não entendi o pedido ou não tenho permissão para isso. Tente me pedir para ver o disco, memória, uptime ou reiniciar o Apache/Invoice Ninja! 🛑",
+        "additionalFields": {}
+      },
+      "id": "envia-erro-ssh-node",
+      "name": "Envia Erro SSH",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        3584,
+        5776
+      ],
+      "webhookId": "COLOQUE-SEU-WEBHOOK-ID-AQUI",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Você é um especialista em DevOps amigável.\nO usuário pediu: \"{{ $('Telegram Trigger').item.json.message.text }}\"\nO servidor executou o comando e respondeu com este log técnico:\n\n{{ $json.stdout }}\n\nSua tarefa:\nEscreva uma resposta curta e amigável em português (usando o mínimo de emojis) para ser enviada no Telegram do usuário, resumindo o status e explicando o que esse resultado significa de forma clara. mostre o log técnico se solicitado.\n\n⚠️ REGRA IMPORTANTE DE FORMATAÇÃO: \nDê preferência para responder em formatos de lista.\nNunca use asteriscos (*) para criar itens de lista. Use traços (-) ou emojis de setinhas/bolinhas para os tópicos, pois asteriscos quebram a formatação do Telegram."
+      },
+      "id": "ia-explica-resultado-node",
+      "name": "IA - Explica o Resultado",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        3824,
+        5584
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "id": "google-gemini-2-node",
+      "name": "Google Gemini 2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        3824,
+        5776
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "envia-resposta-ia-node",
+      "name": "Envia Resposta IA",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        4080,
+        5584
+      ],
+      "webhookId": "COLOQUE-SEU-WEBHOOK-ID-AQUI",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verifica Usuários",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verifica Usuários": {
+      "main": [
+        [
+          {
+            "node": "Cérebro Lógico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cérebro Lógico": {
+      "main": [
+        [
+          {
+            "node": "Roteador Mestre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador Mestre": {
+      "main": [
+        [
+          {
+            "node": "AWS: Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AWS: Ligar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AWS: Desligar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AWS: Reiniciar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AWS API: Mudar Tipo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resp: Texto Direto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IA - Entende o Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS: Status": {
+      "main": [
+        [
+          {
+            "node": "Resp: Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS: Ligar": {
+      "main": [
+        [
+          {
+            "node": "Resp: Ação Executada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS: Desligar": {
+      "main": [
+        [
+          {
+            "node": "Resp: Ação Executada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS: Reiniciar": {
+      "main": [
+        [
+          {
+            "node": "Resp: Ação Executada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AWS API: Mudar Tipo": {
+      "main": [
+        [
+          {
+            "node": "Resp: Ação Executada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA - Entende o Pedido": {
+      "main": [
+        [
+          {
+            "node": "Comando Permitido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comando Permitido?": {
+      "main": [
+        [
+          {
+            "node": "SSH - Executa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envia Erro SSH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SSH - Executa": {
+      "main": [
+        [
+          {
+            "node": "IA - Explica o Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA - Explica o Resultado": {
+      "main": [
+        [
+          {
+            "node": "Envia Resposta IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini 1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "IA - Entende o Pedido",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini 2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "IA - Explica o Resultado",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "public-template-n8n",
+  "tags": []
+}
