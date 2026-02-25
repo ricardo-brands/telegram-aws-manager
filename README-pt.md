@@ -65,7 +65,7 @@ Para importar e rodar este fluxo na sua instância n8n, você precisará de:
 
 1. Importe o arquivo `workflow.json` para o seu n8n.
 2. Adicione as suas credenciais em todos os nós correspondentes (Telegram, AWS, SSH, Google Gemini).
-3. No nó **Verifica Usuários**, substitua o valor `862975787` pelo seu Telegram Chat ID (e adicione os IDs da sua equipe).
+3. No nó **Verifica Usuários**, substitua o valor `YOUR_CHAT_ID_HERE` pelo seu Telegram Chat ID (e adicione os IDs da sua equipe).
 4. No nó **Cérebro Lógico**, altere a variável `instance_id` para o ID da sua máquina EC2 e defina sua `regiao` (ex: `sa-east-1`).
 5. No nó **IA - Entende o Pedido**, edite o Prompt para incluir os caminhos reais dos seus containers Docker, serviços ou scripts que a IA tem permissão para rodar.
 
